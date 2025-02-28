@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from code_webcam.webcam_helper_functions import resize_video
+from webcam_helper_functions import resize_video
 
 # Configurações iniciais
 DETECTOR_TYPE = "ssd"  # Opções: "haarcascade" ou "ssd"
