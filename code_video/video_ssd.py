@@ -49,10 +49,10 @@ fourcc = cv2.VideoWriter_fourcc(*'XVID')
 fps = 24
 video_saida = cv2.VideoWriter(arquivo_resultado, fourcc, fps, (video_largura, video_altura))
 
-# Criando o classificador Haar
+# Criando o classificador SSD
 network = cv2.dnn.readNetFromCaffe("Arquivos/weights/deploy.prototxt.txt", "Arquivos/weights/res10_300x300_ssd_iter_140000.caffemodel")
 
-# Função para detectar faces usando Haar Cascade
+# Função para detectar faces usando SSD Cascade
 def detecta_face_ssd(net, imagem, show_conf=True, tamanho=300, conf_min = 0.7):
     (h, w) = imagem.shape[:2]
     blob = cv2.dnn.blobFromImage(cv2.resize(imagem, (tamanho, tamanho)), 1.0, (tamanho, tamanho), (104.0, 117.0, 123.0))
