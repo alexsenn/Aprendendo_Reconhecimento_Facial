@@ -4,6 +4,7 @@ from PIL import Image
 import os
 import dlib
 import pickle
+from _cria_base_dados import carrega_treinamento
 
 def extrai_descritor(face, imagem_rgb, extrator_descritor_facial, detector_pontos, tamanho_alvo=(150, 150)):
     """
@@ -83,9 +84,8 @@ def previsoes_dlib(path_dataset, descritores_faces, index, detector_face, detect
             cv2.putText(imagem_np, f'{distancia_minima:.3f}', (10, h - 30), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.6, (0, 255, 0))
 
             # Exibe a imagem
-            imagem_bgr_display = cv2.cvtColor(imagem_np, cv2.COLOR_RGB2BGR) #converte a imagem para exibis corretamente
-            cv2.imshow('Treinamento', imagem_bgr_display)
-            # cv2.imshow('Reconhecimento', imagem_np)
+            imagem_bgr_display = cv2.cvtColor(imagem_np, cv2.COLOR_RGB2BGR)
+            cv2.imshow('Reconhecimento', imagem_bgr_display)
             cv2.waitKey(0)  # Pressione qualquer tecla para a próxima imagem
             cv2.destroyAllWindows()
 
@@ -99,17 +99,27 @@ if __name__ == "__main__":
     detector_pontos = dlib.shape_predictor('Arquivos/weights/shape_predictor_68_face_landmarks.dat')
     extrator_descritor_facial = dlib.face_recognition_model_v1('Arquivos/weights/dlib_face_recognition_resnet_model_v1.dat')
     image_test_path = 'Arquivos/datasets/yalefaces/yalefaces/Fotos_TI/image_tests'
+    image_train_path = 'Arquivos/datasets/yalefaces/yalefaces/Fotos_TI/'
     descritores_file = 'descritores_faces.npy'
     index_file = 'index_faces.pickle'
 
-    # Carrega os descritores e índices do treinamento
+    # Carrega ou cria os descritores e índices do treinamento
     if os.path.exists(descritores_file) and os.path.exists(index_file):
         descritores_faces = np.load(descritores_file)
         with open(index_file, 'rb') as f:
             index = pickle.load(f)
         print("Carregado de arquivos existentes.")
     else:
-        raise FileNotFoundError("Arquivos de treinamento não encontrados. Execute o treinamento primeiro.")
+        print("Arquivos de treinamento não encontrados. Criando a base de dados...")
+        descritores_faces, index = carrega_treinamento(
+            image_train_path, detector_face, extrator_descritor_facial, detector_pontos
+        )
+        if descritores_faces is None or index is None:
+            raise ValueError("Falha ao criar a base de dados. Verifique o dataset e os arquivos de pesos.")
+        np.save(descritores_file, descritores_faces)
+        with open(index_file, 'wb') as f:
+            pickle.dump(index, f)
+        print("Base de dados criada e salva com sucesso.")
 
     # Normaliza os descritores carregados (como no treinamento)
     descritores_faces = descritores_faces / np.linalg.norm(descritores_faces, axis=1)[:, np.newaxis]

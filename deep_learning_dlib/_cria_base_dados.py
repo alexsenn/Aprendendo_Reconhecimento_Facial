@@ -104,7 +104,7 @@ if __name__ == "__main__":
     detector_face = dlib.get_frontal_face_detector()
     detector_pontos = dlib.shape_predictor('Arquivos/weights/shape_predictor_68_face_landmarks.dat')
     extrator_descritor_facial = dlib.face_recognition_model_v1('Arquivos/weights/dlib_face_recognition_resnet_model_v1.dat')
-    image_test_path = 'Arquivos/datasets/yalefaces/yalefaces/Fotos_TI/'
+    image_train_path = 'Arquivos/datasets/yalefaces/yalefaces/Fotos_TI/'
     descritores_file = 'descritores_faces.npy'
     index_file = 'index_faces.pickle'
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         print("Carregado de arquivos existentes.")
     else:
         descritores_faces, index = carrega_treinamento(
-            image_test_path, detector_face, extrator_descritor_facial, detector_pontos
+            image_train_path, detector_face, extrator_descritor_facial, detector_pontos
         )
         np.save(descritores_file, descritores_faces)
         with open(index_file, 'wb') as f:
