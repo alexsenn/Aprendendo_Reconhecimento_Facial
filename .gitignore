@@ -25,6 +25,8 @@ $ cat .gitignore
 
 # ignore all files in any directory named build
 Arquivos/
+opencv/
+opencv_contrib/
 eigen_classifier.yml
 code_data_base/__pycache__/
 .gitignore

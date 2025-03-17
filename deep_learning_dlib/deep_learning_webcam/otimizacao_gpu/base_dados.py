@@ -1,11 +1,11 @@
 import cv2
 import numpy as np
+import cupy as cp
 from PIL import Image
 import os
 import dlib
 import pickle
 
-# Mapeamento de números para nomes
 NUMERO_PARA_NOME = {
     "001": "Meire",
     "002": "Bruna",
@@ -31,43 +31,36 @@ NUMERO_PARA_NOME = {
 }
 
 def extrai_descritor(face, imagem_rgb, descritores_faces, extrator_descritor_facial, detector_pontos, tamanho_alvo=(150, 150)):
-    """
-    Extrai o descritor facial de uma face detectada, recortando e redimensionando a região da face.
-    """
-    # Extrai coordenadas da face com margem
     l, t, r, b = face.left(), face.top(), face.right(), face.bottom()
     h, w = b - t, r - l
-    margem = int(max(h, w) * 0.2)  # 20% de margem
+    margem = int(max(h, w) * 0.2)
     l, t, r, b = max(0, l - margem), max(0, t - margem), min(imagem_rgb.shape[1], r + margem), min(imagem_rgb.shape[0], b + margem)
 
-    # Recorta a face
     face_recortada = imagem_rgb[t:b, l:r]
     if face_recortada.size == 0:
         print("Aviso: Recorte inválido, pulando face.")
         return imagem_rgb, descritores_faces
 
-    # Redimensiona mantendo proporção
+    gpu_frame = cv2.cuda_GpuMat()
+    gpu_frame.upload(face_recortada)
     proporcao = min(tamanho_alvo[0] / face_recortada.shape[0], tamanho_alvo[1] / face_recortada.shape[1])
     novo_h, novo_w = int(face_recortada.shape[0] * proporcao), int(face_recortada.shape[1] * proporcao)
-    face_redimensionada = cv2.resize(face_recortada, (novo_w, novo_h), interpolation=cv2.INTER_AREA)
+    gpu_resized = cv2.cuda.resize(gpu_frame, (novo_w, novo_h), interpolation=cv2.INTER_AREA)
+    face_redimensionada = gpu_resized.download()
 
-    # Cria uma imagem preta do tamanho alvo e coloca a face redimensionada no centro
     face_final = np.zeros((tamanho_alvo[0], tamanho_alvo[1], 3), dtype=np.uint8)
     y_offset = (tamanho_alvo[0] - novo_h) // 2
     x_offset = (tamanho_alvo[1] - novo_w) // 2
     face_final[y_offset:y_offset+novo_h, x_offset:x_offset+novo_w] = face_redimensionada
 
-    # Desenha retângulo e pontos na imagem original
     cv2.rectangle(imagem_rgb, (l, t), (r, b), (0, 0, 255), 2)
     pontos_originais = detector_pontos(imagem_rgb, face)
     for ponto in pontos_originais.parts():
         cv2.circle(imagem_rgb, (ponto.x, ponto.y), 2, (0, 255, 0), 1)
 
-    # Detecta pontos faciais na imagem redimensionada
     face_ajustada = dlib.rectangle(left=0, top=0, right=face_final.shape[1], bottom=face_final.shape[0])
     pontos = detector_pontos(face_final, face_ajustada)
 
-    # Extrai descritor da face redimensionada
     descritor_face = extrator_descritor_facial.compute_face_descriptor(face_final, pontos)
     descritor_face = np.array([f for f in descritor_face], dtype=np.float64)
     descritor_face = descritor_face[np.newaxis, :]
@@ -94,11 +87,10 @@ def carrega_treinamento(path_dataset, detector_face, extrator_descritor_facial, 
             print(f"Erro: Não foi possível carregar {path}")
             continue
 
-        # Extrai o número do nome do arquivo
         nome_arquivo = os.path.basename(path)
         partes_nome = nome_arquivo.split('.')
         if len(partes_nome) >= 2:
-            numero = partes_nome[1]  # Ex.: Pessoa.001.Meire.jpg -> 001
+            numero = partes_nome[1]
             nome = NUMERO_PARA_NOME.get(numero, "Desconhecido")
         else:
             numero = "Desconhecido"
